@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Location Sharing</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <input type="text" id="nickname" placeholder="Enter your nickname">
+  <button id="startSharing">Start Sharing Location</button>
+  <button id="stopSharing" disabled>Stop Sharing Location</button>
+  <p id="status"></p>
+  <a id="admin_link" href="/admin" style="color: red;">Tracker Page</a>
+
+  <script>
+  let userId;
+  let intervalId;
+
+  function sendLocation() {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, latitude, longitude }),
+        });
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        alert('Unable to get location. Please enable location services.');
+      },
+      { enableHighAccuracy: true }
+    );
+  }
+
+  function startSharing() {
+    const sanitizeInput = (input) => input.replace(/[<>"/'`]/g, '');
+    const nickname = sanitizeInput(document.getElementById('nickname').value.trim());
+    // const nickname = document.getElementById('nickname').value.trim();
+    if (!nickname) {
+      alert('Please enter a nickname.');
+      return;
+    }
+    fetch('/api/start-sharing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname }),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Nickname already in use. Please choose another one.');
+      }
+      return response.json();
+    })
+    .then(data => {
+      userId = data.userId;
+      document.getElementById('status').textContent = `Sharing location as ${userId}`;
+      document.getElementById('startSharing').disabled = true;
+      document.getElementById('stopSharing').disabled = false;
+      sendLocation(); // Send initial location
+      intervalId = setInterval(sendLocation, 60000); // Every 1 minute
+    })
+    .catch(error => {
+      console.error('Error starting sharing:', error);
+      alert(error.message);
+    });
+  }
+
+  function stopSharing() {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    fetch('/api/STOP', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    document.getElementById('status').textContent = 'Location sharing stopped';
+    document.getElementById('startSharing').disabled = false;
+    document.getElementById('stopSharing').disabled = true;
+  }
+
+  document.getElementById('startSharing').addEventListener('click', startSharing);
+  document.getElementById('stopSharing').addEventListener('click', stopSharing);
+  </script>
+</body>
+</html>
