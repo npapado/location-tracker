@@ -1,2 +1,2 @@
 # location-tracker
-Location tracker WebApp using JavaScript
+Location tracker WebApp using JavaScript/Node.js
